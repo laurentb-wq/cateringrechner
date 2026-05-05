@@ -164,6 +164,19 @@
     @media (max-width: 800px) {
       .table-wrap { margin: 0 -16px; padding: 0 16px; }
     }
+    @media (max-width: 600px) {
+      .pos-table td input[type="number"],
+      .pos-table td input[type="text"] { font-size: 12px; padding: 5px 5px; }
+      .pos-table td.num { font-size: 12px; padding-right: 5px; }
+      .pos-table thead th { font-size: 9px; padding: 0 4px 8px; }
+      .col-menge  { width: 44px; }
+      .col-prod   { min-width: 80px; }
+      .col-preis  { width: 64px; }
+      .col-betrag { width: 64px; }
+      .col-total  { width: 64px; }
+      .col-del    { width: 26px; }
+      .btn-del    { padding: 3px 4px; font-size: 15px; }
+    }
 
     table.pos-table { width: 100%; border-collapse: collapse; }
 
@@ -956,7 +969,7 @@ function recalc() {
 
 function set(id,val) { const el=document.getElementById(id); if(el) el.textContent=val; }
 
-let advancedMode = true;
+let advancedMode = window.innerWidth > 800;
 function toggleAdvanced() {
   advancedMode = !advancedMode;
   applyAdvancedMode();
@@ -964,6 +977,7 @@ function toggleAdvanced() {
 function applyAdvancedMode() {
   document.getElementById('posCard').classList.toggle('simple-mode', !advancedMode);
   const btn = document.getElementById('toggleAdv');
+  btn.textContent = advancedMode ? 'Vereinfacht' : 'Erweitert';
   btn.classList.toggle('active', advancedMode);
   const lbl = document.getElementById('preis-label');
   if (lbl) lbl.textContent = advancedMode ? 'exkl. MwSt' : '';
