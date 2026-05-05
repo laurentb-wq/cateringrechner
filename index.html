@@ -164,8 +164,8 @@
     @media (max-width: 800px) {
       .table-wrap { margin: 0 -16px; padding: 0 16px; }
     }
-    /* price hint shown only in mobile simple mode */
-    .row-ph { display: none; }
+    /* mobile price input shown only in simple mode on small screens */
+    .mph { display: none; }
 
     @media (max-width: 600px) {
       /* ── simple mode: flex-row list ── */
@@ -200,13 +200,23 @@
       }
       .simple-mode .col-del { flex-shrink: 0; width: 28px; }
 
-      /* price hint under product name */
-      .simple-mode .row-ph {
+      /* editable price input under product name */
+      .simple-mode .mph {
         display: block;
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-3);
-        padding-left: 8px;
-        margin-top: 1px;
+        font-family: inherit;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid transparent;
+        padding: 2px 8px 0;
+        width: 100%;
+        text-align: left;
+      }
+      .simple-mode .mph:focus {
+        outline: none;
+        border-bottom-color: var(--border);
+        color: var(--text);
       }
 
       /* footer total row */
@@ -947,7 +957,10 @@ function renderRows() {
       <td class="col-prod">
         <input type="text" value="${esc(row.produkt)}" placeholder="Produkt"
           onchange="updateRow('${row.id}','produkt',this.value)">
-        <span class="row-ph" id="r-${row.id}-ph">CHF ${row.preis.toFixed(2)} / Einheit</span>
+        <input type="number" class="mph" id="r-${row.id}-ph"
+          value="${row.preis.toFixed(2)}" min="0" step="0.50"
+          oninput="updateRow('${row.id}','preis',this.value);syncPriceInput('${row.id}',this.value)"
+          placeholder="CHF / Einheit">
       </td>
       <td class="col-preis">
         <input type="number" value="${row.preis.toFixed(2)}" min="0" step="0.50"
@@ -990,31 +1003,32 @@ function recalc() {
     totB+=b; totM+=m; totT+=b+m;
     const k = mwstBucket(rate);
     by[k]+=b; mv[k]+=m;
-    set(`r-${r.id}-b`, fmt(b));
-    set(`r-${r.id}-m`, fmt(m));
-    set(`r-${r.id}-t`, fmt(b+m));
-    set(`r-${r.id}-ph`, `CHF ${r.preis.toFixed(2)} / Einheit`);
+    set(`r-${r.id}-b`, fmt05(b));
+    set(`r-${r.id}-m`, fmt05(m));
+    set(`r-${r.id}-t`, fmt05(b+m));
+    const ph = document.getElementById(`r-${r.id}-ph`);
+    if (ph) ph.value = r.preis.toFixed(2);
   });
 
-  set('f-betrag', fmt(totB));
-  set('f-mwst',   fmt(totM));
-  set('f-total',  fmt(totT));
+  set('f-betrag', fmt05(totB));
+  set('f-mwst',   fmt05(totM));
+  set('f-total',  fmt05(totT));
 
-  set('s-exkl', 'CHF '+fmt(totB));
-  set('s-m81',  'CHF '+fmt(mv['8.1']));
-  set('s-m26',  'CHF '+fmt(mv['2.6']));
-  set('s-m0',   'CHF '+fmt(mv['0']));
-  set('s-inkl', 'CHF '+fmt(totT));
+  set('s-exkl', 'CHF '+fmt05(totB));
+  set('s-m81',  'CHF '+fmt05(mv['8.1']));
+  set('s-m26',  'CHF '+fmt05(mv['2.6']));
+  set('s-m0',   'CHF '+fmt05(mv['0']));
+  set('s-inkl', 'CHF '+fmt05(totT));
 
-  set('header-total-val', totT > 0 ? 'CHF '+fmt(totT) : '—');
+  set('header-total-val', totT > 0 ? 'CHF '+fmt05(totT) : '—');
 
   document.getElementById('row-26').style.display = mv['2.6']>0 ? '' : 'none';
   document.getElementById('row-0').style.display  = mv['0']>0   ? '' : 'none';
 
   const p = state.persons;
   set('s-pers',  p>0 ? p : '–');
-  set('s-pp-ex', p>0 ? 'CHF '+fmt(totB/p) : '–');
-  set('s-pp-in', p>0 ? 'CHF '+fmt(totT/p) : '–');
+  set('s-pp-ex', p>0 ? 'CHF '+fmt05(totB/p) : '–');
+  set('s-pp-in', p>0 ? 'CHF '+fmt05(totT/p) : '–');
 
   // Category breakdown (inkl. MwSt)
   const cats = { essen:0, getraenke:0, geschirr:0, personal:0, anreise:0, sonstiges:0 };
@@ -1035,6 +1049,19 @@ function recalc() {
 }
 
 function set(id,val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function syncPriceInput(id, val) {
+  // keep the desktop price input in sync when mobile input changes
+  const rows = document.querySelectorAll(`#posBody tr`);
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll('input[type="number"]');
+    if (inputs.length >= 2) {
+      const priceInput = inputs[1]; // second number input = preis
+      if (tr.innerHTML.includes(`'${id}'`) && priceInput !== document.activeElement) {
+        priceInput.value = parseFloat(String(val).replace(',','.')) || 0;
+      }
+    }
+  });
+}
 
 let advancedMode = window.innerWidth > 800;
 function toggleAdvanced() {
