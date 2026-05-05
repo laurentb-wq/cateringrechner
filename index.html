@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catering Kostenrechner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --bg:      #f2f2ef;
+      --surface: #ffffff;
+      --border:  #e6e6e1;
+      --text:    #111111;
+      --text-2:  #666666;
+      --text-3:  #aaaaaa;
+      --r:       14px;
+      --r-sm:    8px;
+      --shadow:  0 1px 2px rgba(0,0,0,0.04), 0 2px 10px rgba(0,0,0,0.04);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 36px 20px 80px;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .app-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 3px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+    .header-total { text-align: right; }
+    .header-total-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-3);
+      margin-bottom: 2px;
+    }
+    .header-total-val {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--r);
+      padding: 24px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--text-3);
+      margin-bottom: 18px;
+    }
+
+    /* ── Event form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      align-items: end;
+    }
+    .form-group.span-2 { grid-column: span 2; }
+
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 13.5px;
+      font-family: inherit;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.07);
+    }
+    .persons-group input {
+      font-size: 26px;
+      font-weight: 700;
+      text-align: center;
+      padding: 5px 8px;
+      letter-spacing: -0.03em;
+    }
+    .form-group select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-sm);
+      font-size: 13.5px;
+      font-family: inherit;
+      color: var(--text);
+      background: white;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--text);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.07);
+    }
+
+    /* ── Positions table ── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -24px;
+      padding: 0 24px;
+    }
+
+    table.pos-table { width: 100%; border-collapse: collapse; }
+
+    .pos-table thead th {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-3);
+      padding: 0 6px 10px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .pos-table thead th.left { text-align: left; }
+    .pos-table tbody tr { transition: background 0.1s; }
+    .pos-table tbody tr:hover { background: #fafaf7; }
+    .pos-table tbody td {
+      padding: 2px 3px;
+      border-bottom: 1px solid #f2f2ef;
+      vertical-align: middle;
+    }
+
+    .section-row td {
+      padding: 14px 6px 5px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pos-table td input[type="number"],
+    .pos-table td input[type="text"] {
+      padding: 6px 8px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      font-size: 13.5px;
+      font-family: inherit;
+      background: transparent;
+      width: 100%;
+      transition: all 0.12s;
+    }
+    .pos-table td input[type="number"] { text-align: right; }
+    .pos-table td input:hover { border-color: var(--border); background: #fafaf7; }
+    .pos-table td input:focus {
+      outline: none;
+      border-color: var(--text);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+
+    .pos-table td select {
+      padding: 6px 4px;
+      border: 1.5px solid transparent;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+      color: var(--text-2);
+      transition: all 0.12s;
+    }
+    .pos-table td select:hover { border-color: var(--border); background: #fafaf7; }
+    .pos-table td select:focus { outline: none; border-color: var(--text); }
+
+    .pos-table td.num {
+      text-align: right;
+      padding-right: 8px;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      color: var(--text-2);
+    }
+
+    .col-menge  { width: 70px; }
+    .col-prod   { min-width: 160px; }
+    .col-preis  { width: 105px; }
+    .col-betrag { width: 105px; }
+    .col-rate   { width: 70px; }
+    .col-mwst   { width: 85px; }
+    .col-total  { width: 95px; }
+    .col-del    { width: 36px; }
+
+    .row-total td {
+      font-weight: 700;
+      font-size: 14px;
+      border-top: 2px solid var(--text);
+      border-bottom: none !important;
+      padding: 12px 6px;
+      color: var(--text);
+    }
+    .row-total td.num { color: var(--text); }
+
+    .btn-del {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #d0d0cc;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px 7px;
+      border-radius: 6px;
+      transition: all 0.12s;
+    }
+    .btn-del:hover { color: #e53e3e; background: #fff5f5; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .card-header .card-title { margin-bottom: 0; }
+    .toggle-advanced {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-3);
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      letter-spacing: 0.01em;
+    }
+    .toggle-advanced:hover { border-color: var(--text); color: var(--text); }
+    .toggle-advanced.active { border-color: var(--text); color: var(--text); background: #f2f2ef; }
+
+    .col-advanced { transition: opacity 0.2s; }
+    .simple-mode .col-advanced { display: none; }
+
+    .btn-add {
+      width: 100%;
+      margin-top: 14px;
+      padding: 11px;
+      background: none;
+      border: 1.5px dashed #d8d8d2;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-3);
+      font-family: inherit;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .btn-add:hover { border-color: var(--text); color: var(--text); background: #fafaf7; }
+
+    /* ── Summary ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+    .sum-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 7px 0;
+      border-bottom: 1px solid #f2f2ef;
+      font-size: 13.5px;
+    }
+    .sum-line .lbl { color: var(--text-2); }
+    .sum-line .val { font-weight: 500; font-variant-numeric: tabular-nums; }
+    .sum-line.grand {
+      border-top: 2px solid var(--text);
+      border-bottom: none;
+      margin-top: 8px;
+      padding-top: 14px;
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+    }
+    .sum-line.pp-inkl {
+      border-top: 1.5px solid var(--text);
+      border-bottom: none;
+      margin-top: 10px;
+      padding-top: 14px;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Category breakdown ── */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .cat-box {
+      background: #f8f8f5;
+      border-radius: 10px;
+      padding: 14px 16px 13px;
+      border: 1px solid #efefea;
+    }
+    .cat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+    .cat-box-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .cat-amount {
+      font-size: 15px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .cat-pp {
+      font-size: 11px;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-3);
+    }
+    .cat-bar-bg {
+      height: 3px;
+      background: #e5e5e0;
+      border-radius: 99px;
+      margin-top: 11px;
+      overflow: hidden;
+    }
+    .cat-bar-fill {
+      height: 3px;
+      background: var(--text);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Action buttons ── */
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 6px;
+    }
+    .btn {
+      padding: 11px 28px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+      transition: all 0.15s;
+      letter-spacing: -0.01em;
+    }
+    .btn-primary {
+      background: var(--text);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #333;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+    .btn-ghost {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--text-2);
+    }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 800px) {
+      .app { padding: 22px 14px 96px; }
+      .app-title { font-size: 19px; }
+      .card { padding: 18px 16px; border-radius: 12px; }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .form-group.span-2 { grid-column: span 2; }
+
+      .summary-grid { grid-template-columns: 1fr; gap: 0; }
+      .summary-grid > div:first-child { padding-bottom: 20px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+
+      .cat-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .actions {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+        background: rgba(255,255,255,0.93);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border);
+        justify-content: stretch;
+        gap: 8px;
+        z-index: 100;
+      }
+      .btn { flex: 1; padding: 13px; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.span-2 { grid-column: span 1; }
+      .header-total { display: none !important; }
+      .cat-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header class="page-header">
+    <div>
+      <div class="app-title">Kostenrechner</div>
+      <div class="app-subtitle">Catering Kalkulation</div>
+    </div>
+    <div class="header-total">
+      <div class="header-total-label">Total inkl. MwSt</div>
+      <div class="header-total-val" id="header-total-val">—</div>
+    </div>
+  </header>
+
+  <!-- Veranstaltung -->
+  <div class="card">
+    <div class="card-title">Veranstaltung</div>
+    <div class="form-grid">
+      <div class="form-group span-2">
+        <label>Kundenname / Adresse</label>
+        <input type="text" id="customerAddr" placeholder="Firma, Strasse, PLZ Ort" oninput="saveAndRecalc()">
+      </div>
+      <div class="form-group">
+        <label>Veranstaltungsname</label>
+        <input type="text" id="eventName" placeholder="z.B. Sommerapéro" oninput="saveAndRecalc()">
+      </div>
+      <div class="form-group">
+        <label>Datum</label>
+        <input type="text" id="eventDate" placeholder="z.B. 12. Juni 2026" oninput="saveAndRecalc()">
+      </div>
+      <div class="form-group">
+        <label>Firmenname (PDF)</label>
+        <input type="text" id="firma" placeholder="z.B. Muster Catering AG" oninput="saveAndRecalc()">
+      </div>
+      <div class="form-group persons-group">
+        <label>Personen</label>
+        <input type="number" id="personCount" value="0" min="0" oninput="onPersonsChange()">
+      </div>
+      <div class="form-group">
+        <label>Dauer Anlass (Std.)</label>
+        <input type="number" id="eventDuration" value="2" min="0.5" step="0.5" oninput="onDurationChange()">
+      </div>
+      <div class="form-group">
+        <label>Getränkekonsum</label>
+        <select id="drinkLevel" onchange="onDrinkLevelChange()">
+          <option value="keine">Keine</option>
+          <option value="wenig">Wenig</option>
+          <option value="normal">Normal</option>
+          <option value="viel" selected>Viel</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Positionen -->
+  <div class="card" id="posCard">
+    <div class="card-header">
+      <div class="card-title">Positionen</div>
+      <button class="toggle-advanced" id="toggleAdv" onclick="toggleAdvanced()">Erweitert</button>
+    </div>
+    <div class="table-wrap">
+      <table class="pos-table">
+        <thead>
+          <tr>
+            <th class="left col-menge">Menge</th>
+            <th class="left col-prod">Produkt</th>
+            <th class="col-preis">Preis / Einheit<br><span style="font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;opacity:.7" id="preis-label">inkl. MwSt</span></th>
+            <th class="col-betrag">Betrag CHF<br><span style="font-weight:400;font-size:9px;text-transform:none;letter-spacing:0;opacity:.7">exkl. MwSt</span></th>
+            <th class="col-rate col-advanced">MwSt %</th>
+            <th class="col-mwst col-advanced">MwSt CHF</th>
+            <th class="col-total">Total inkl. MwSt</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="posBody"></tbody>
+        <tfoot>
+          <tr class="row-total">
+            <td colspan="3">Total Rechnung</td>
+            <td class="num" id="f-betrag">0.00</td>
+            <td class="col-advanced"></td>
+            <td class="num col-advanced" id="f-mwst">0.00</td>
+            <td class="num" id="f-total">0.00</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addRow()">+ Position hinzufügen</button>
+  </div>
+
+  <!-- Zusammenfassung -->
+  <div class="card">
+    <div class="card-title">Zusammenfassung</div>
+    <div class="summary-grid">
+      <div>
+        <div class="sum-line">
+          <span class="lbl">Total exkl. MwSt</span>
+          <span class="val" id="s-exkl">CHF 0.00</span>
+        </div>
+        <div class="sum-line">
+          <span class="lbl">MwSt 8.1 %</span>
+          <span class="val" id="s-m81">CHF 0.00</span>
+        </div>
+        <div class="sum-line" id="row-26" style="display:none">
+          <span class="lbl">MwSt 2.6 %</span>
+          <span class="val" id="s-m26">CHF 0.00</span>
+        </div>
+        <div class="sum-line" id="row-0" style="display:none">
+          <span class="lbl">MwSt 0 %</span>
+          <span class="val" id="s-m0">CHF 0.00</span>
+        </div>
+        <div class="sum-line grand">
+          <span>Total inkl. MwSt</span>
+          <span id="s-inkl">CHF 0.00</span>
+        </div>
+      </div>
+      <div>
+        <div class="sum-line">
+          <span class="lbl">Anzahl Personen</span>
+          <span class="val" id="s-pers">–</span>
+        </div>
+        <div class="sum-line">
+          <span class="lbl">Preis / Person exkl. MwSt</span>
+          <span class="val" id="s-pp-ex">–</span>
+        </div>
+        <div class="sum-line pp-inkl">
+          <span class="lbl">Preis / Person inkl. MwSt</span>
+          <span id="s-pp-in">–</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aufschlüsselung -->
+  <div class="card">
+    <div class="card-title">Aufschlüsselung nach Kategorie (inkl. MwSt)</div>
+    <div class="cat-grid">
+      <div class="cat-box">
+        <div class="cat-label">Essen</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-essen">CHF 0.00</div>
+          <div class="cat-pp" id="pp-essen">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-essen" style="width:0%"></div></div>
+      </div>
+      <div class="cat-box">
+        <div class="cat-label">Getränke</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-getraenke">CHF 0.00</div>
+          <div class="cat-pp" id="pp-getraenke">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-getraenke" style="width:0%"></div></div>
+      </div>
+      <div class="cat-box">
+        <div class="cat-label">Geschirr &amp; Gläser</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-geschirr">CHF 0.00</div>
+          <div class="cat-pp" id="pp-geschirr">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-geschirr" style="width:0%"></div></div>
+      </div>
+      <div class="cat-box">
+        <div class="cat-label">Personal</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-personal">CHF 0.00</div>
+          <div class="cat-pp" id="pp-personal">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-personal" style="width:0%"></div></div>
+      </div>
+      <div class="cat-box">
+        <div class="cat-label">Anreise</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-anreise">CHF 0.00</div>
+          <div class="cat-pp" id="pp-anreise">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-anreise" style="width:0%"></div></div>
+      </div>
+      <div class="cat-box">
+        <div class="cat-label">Sonstiges</div>
+        <div class="cat-box-row">
+          <div class="cat-amount" id="cat-sonstiges">CHF 0.00</div>
+          <div class="cat-pp" id="pp-sonstiges">–</div>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" id="bar-sonstiges" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-ghost" onclick="resetAll()">Zurücksetzen</button>
+    <button class="btn btn-primary" onclick="exportPDF()">↓ PDF exportieren</button>
+  </div>
+
+</div>
+<script>
+const { jsPDF } = window.jspdf;
+
+function fmt(n) {
+  return n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function mwstBucket(rate) {
+  if (Math.abs(rate - 8.1) < 0.01) return '8.1';
+  if (Math.abs(rate - 2.6) < 0.01) return '2.6';
+  return '0';
+}
+
+function makeDefaults(p, dur) {
+  dur = dur || 2;
+  return [
+    { id: uid(), section: 'Speisen' },
+    { id: uid(), produkt: 'Apéro',               menge: p,               preis: 35.00, rate: '8.1', pp: true,  cat: 'essen'     },
+
+    { id: uid(), section: 'Getränke' },
+    { id: uid(), produkt: 'Mineralwasser (1 L)', menge: calcDrink(p,1/5,2,'viel'),  preis:  6.50, rate: '8.1', ratio: 1/5,  rmin: 2, cat: 'getraenke' },
+    { id: uid(), produkt: 'Bier',                menge: calcDrink(p,1/9,1,'viel'),  preis:  6.00, rate: '8.1', ratio: 1/9,  rmin: 1, cat: 'getraenke' },
+    { id: uid(), produkt: 'Frucht-Secco',        menge: calcDrink(p,1/7,2,'viel'),  preis: 24.50, rate: '8.1', ratio: 1/7,  rmin: 2, cat: 'getraenke' },
+    { id: uid(), produkt: 'Weisswein (75 cl)',   menge: calcDrink(p,1/8,1,'viel'),  preis: 33.90, rate: '8.1', ratio: 1/8,  rmin: 1, cat: 'getraenke' },
+    { id: uid(), produkt: 'Rotwein (75 cl)',     menge: calcDrink(p,1/10,1,'viel'), preis: 39.50, rate: '8.1', ratio: 1/10, rmin: 1, cat: 'getraenke' },
+
+    { id: uid(), section: 'Material' },
+    { id: uid(), produkt: 'Gläser',              menge: p,               preis:  1.90, rate: '8.1', pp: true,  cat: 'geschirr'  },
+    { id: uid(), produkt: 'Geschirr',            menge: p,               preis:  3.90, rate: '8.1', pp: true,  cat: 'geschirr'  },
+    { id: uid(), produkt: 'Tischtücher',         menge: 2,               preis: 15.00, rate: '8.1',            cat: 'sonstiges' },
+
+    { id: uid(), section: 'Personal & Logistik' },
+    { id: uid(), produkt: 'Anlassleitung',       menge: staffHours(dur), preis: 89.00, rate: '8.1', staffHours: true, cat: 'personal' },
+    { id: uid(), produkt: 'Chef de Service',     menge: staffCdS(p,dur), preis: 79.00, rate: '8.1', staffCdS: true,  cat: 'personal' },
+    { id: uid(), produkt: 'Mitarbeitende',       menge: staffMit(p,dur), preis: 65.00, rate: '8.1', staffMit: true,  cat: 'personal' },
+    { id: uid(), produkt: 'Wegpauschale',        menge: 1,               preis:140.00, rate: '8.1',            cat: 'anreise'   },
+  ];
+}
+
+// Personal: 2h Vorlauf + Anlassdauer + 1h Abräumen
+function staffHours(dur) { return (dur || 2) + 3; }
+function staffMit(p, dur) {
+  const n = Math.max(1, Math.ceil((p || 0) / 30));
+  const h = dur || 2;
+  // 1 Person: volle Dauer + 3h (Vor-/Nachbereitung), Rest: nur Anlassdauer
+  return n * h + 3;
+}
+function staffCdS(p, dur) {
+  return p >= 120 ? staffHours(dur) : 0;
+}
+function calc(persons, ratio, min) {
+  if (!persons) return min;
+  return Math.max(min, Math.ceil(persons * ratio));
+}
+
+// Getränke-Multiplikator je Konsumstufe
+const DRINK_MULT = { keine: 0, wenig: 0.5, normal: 0.75, viel: 1.0 };
+function calcDrink(p, ratio, rmin, level) {
+  const m = DRINK_MULT[level || 'viel'];
+  if (m === 0) return 0;
+  if (!p) return Math.max(1, Math.round(rmin * m));
+  return Math.max(1, Math.ceil(p * ratio * m));
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let state = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem('cr_v6');
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  const p = 50, dur = 2;
+  return {
+    customerAddr: 'Muster AG, Musterstrasse 12, 3000 Bern',
+    eventName: 'Sommerapéro',
+    eventDate: '20. Juni 2026',
+    firma: 'Muster Catering AG',
+    persons: p,
+    eventDuration: dur,
+    drinkLevel: 'viel',
+    rows: makeDefaults(p, dur),
+  };
+}
+
+function persist() {
+  localStorage.setItem('cr_v6', JSON.stringify(state));
+}
+
+// ── Input handlers ─────────────────────────────────────────────────────────
+function saveAndRecalc() {
+  state.customerAddr = document.getElementById('customerAddr').value;
+  state.eventName    = document.getElementById('eventName').value;
+  state.eventDate    = document.getElementById('eventDate').value;
+  state.firma        = document.getElementById('firma').value;
+  persist();
+  recalc();
+}
+
+function onPersonsChange() {
+  const p   = Math.max(0, parseInt(document.getElementById('personCount').value) || 0);
+  const dur = state.eventDuration || 2;
+  const lvl = state.drinkLevel || 'viel';
+  state.persons = p;
+  state.rows.forEach(r => {
+    if (r.section) return;
+    if (r.pp)         r.menge = p;
+    if (r.ratio)      r.menge = calcDrink(p, r.ratio, r.rmin, lvl);
+    if (r.staffMit)   r.menge = staffMit(p, dur);
+    if (r.staffCdS)   r.menge = staffCdS(p, dur);
+    if (r.staffHours) r.menge = staffHours(dur);
+  });
+  persist();
+  renderRows();
+}
+
+function onDurationChange() {
+  const dur = Math.max(0.5, parseFloat(document.getElementById('eventDuration').value) || 2);
+  const p   = state.persons;
+  state.eventDuration = dur;
+  state.rows.forEach(r => {
+    if (r.section) return;
+    if (r.staffMit)   r.menge = staffMit(p, dur);
+    if (r.staffCdS)   r.menge = staffCdS(p, dur);
+    if (r.staffHours) r.menge = staffHours(dur);
+  });
+  persist();
+  renderRows();
+}
+
+function onDrinkLevelChange() {
+  const lvl = document.getElementById('drinkLevel').value;
+  const p   = state.persons;
+  state.drinkLevel = lvl;
+  state.rows.forEach(r => {
+    if (r.section || !r.ratio) return;
+    r.menge = calcDrink(p, r.ratio, r.rmin, lvl);
+  });
+  persist();
+  renderRows();
+}
+
+function updateRow(id, field, val) {
+  const r = state.rows.find(r => r.id === id);
+  if (!r) return;
+  if (field === 'menge' || field === 'preis') r[field] = parseFloat(String(val).replace(',', '.')) || 0;
+  else r[field] = val;
+  persist();
+  recalc();
+}
+
+function addRow() {
+  state.rows.push({ id: uid(), produkt:'', menge:0, preis:0, rate:'8.1' });
+  persist();
+  renderRows();
+}
+
+function deleteRow(id) {
+  state.rows = state.rows.filter(r => r.id !== id);
+  persist();
+  renderRows();
+}
+
+function resetAll() {
+  if (!confirm('Alle Daten zurücksetzen?')) return;
+  localStorage.removeItem('cr_v6');
+  state = { customerAddr:'', eventName:'', eventDate:'', firma:'', persons:0, eventDuration:2, drinkLevel:'viel', rows: makeDefaults(0, 2) };
+  initUI();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderRows() {
+  const tbody = document.getElementById('posBody');
+  tbody.innerHTML = '';
+
+  state.rows.forEach(row => {
+    if (row.section) {
+      const tr = document.createElement('tr');
+      tr.className = 'section-row';
+      tr.innerHTML = `<td colspan="8">${row.section}</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    const betrag  = row.menge * row.preis;
+    const rate    = parseFloat(row.rate);
+    const mwstCHF = betrag * rate / 100;
+    const total   = betrag + mwstCHF;
+    const mv = Number.isInteger(row.menge) ? row.menge : row.menge.toFixed(2);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="col-menge">
+        <input type="number" value="${mv}" min="0" step="0.5"
+          onchange="updateRow('${row.id}','menge',this.value)">
+      </td>
+      <td class="col-prod">
+        <input type="text" value="${esc(row.produkt)}" placeholder="Produkt"
+          onchange="updateRow('${row.id}','produkt',this.value)">
+      </td>
+      <td class="col-preis">
+        <input type="number" value="${row.preis.toFixed(2)}" min="0" step="0.50"
+          oninput="updateRow('${row.id}','preis',this.value)">
+      </td>
+      <td class="num col-betrag" id="r-${row.id}-b">${fmt(betrag)}</td>
+      <td class="col-rate col-advanced">
+        <select onchange="updateRow('${row.id}','rate',this.value)">
+          <option value="8.1" ${row.rate==='8.1'?'selected':''}>8.1 %</option>
+          <option value="2.6" ${row.rate==='2.6'?'selected':''}>2.6 %</option>
+          <option value="0"   ${row.rate==='0'  ?'selected':''}>0 %</option>
+        </select>
+      </td>
+      <td class="num col-mwst col-advanced" id="r-${row.id}-m">${fmt(mwstCHF)}</td>
+      <td class="num col-total" id="r-${row.id}-t">${fmt(total)}</td>
+      <td class="col-del">
+        <button class="btn-del" onclick="deleteRow('${row.id}')" title="Löschen">×</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  recalc();
+}
+
+function esc(s) {
+  return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ── Recalculate ────────────────────────────────────────────────────────────
+function recalc() {
+  let totB=0, totM=0, totT=0;
+  const by={'8.1':0,'2.6':0,'0':0};
+  const mv={'8.1':0,'2.6':0,'0':0};
+
+  state.rows.forEach(r => {
+    if (r.section) return;
+    const b = r.menge * r.preis;
+    const rate = parseFloat(r.rate);
+    const m = b * rate / 100;
+    totB+=b; totM+=m; totT+=b+m;
+    const k = mwstBucket(rate);
+    by[k]+=b; mv[k]+=m;
+    set(`r-${r.id}-b`, fmt(b));
+    set(`r-${r.id}-m`, fmt(m));
+    set(`r-${r.id}-t`, fmt(b+m));
+  });
+
+  set('f-betrag', fmt(totB));
+  set('f-mwst',   fmt(totM));
+  set('f-total',  fmt(totT));
+
+  set('s-exkl', 'CHF '+fmt(totB));
+  set('s-m81',  'CHF '+fmt(mv['8.1']));
+  set('s-m26',  'CHF '+fmt(mv['2.6']));
+  set('s-m0',   'CHF '+fmt(mv['0']));
+  set('s-inkl', 'CHF '+fmt(totT));
+
+  set('header-total-val', totT > 0 ? 'CHF '+fmt(totT) : '—');
+
+  document.getElementById('row-26').style.display = mv['2.6']>0 ? '' : 'none';
+  document.getElementById('row-0').style.display  = mv['0']>0   ? '' : 'none';
+
+  const p = state.persons;
+  set('s-pers',  p>0 ? p : '–');
+  set('s-pp-ex', p>0 ? 'CHF '+fmt(totB/p) : '–');
+  set('s-pp-in', p>0 ? 'CHF '+fmt(totT/p) : '–');
+
+  // Category breakdown (inkl. MwSt)
+  const cats = { essen:0, getraenke:0, geschirr:0, personal:0, anreise:0, sonstiges:0 };
+  state.rows.forEach(r => {
+    if (r.section || !r.cat) return;
+    const b = r.menge * r.preis;
+    const rate = parseFloat(r.rate);
+    const t = b + b * rate / 100;
+    if (Object.prototype.hasOwnProperty.call(cats, r.cat)) cats[r.cat] += t;
+  });
+  const catMax = Math.max(...Object.values(cats), 0.01);
+  Object.keys(cats).forEach(k => {
+    set(`cat-${k}`, 'CHF ' + fmt(cats[k]));
+    set(`pp-${k}`, p > 0 ? fmt(cats[k] / p) + ' / Pers.' : '–');
+    const bar = document.getElementById(`bar-${k}`);
+    if (bar) bar.style.width = (cats[k] / catMax * 100).toFixed(1) + '%';
+  });
+}
+
+function set(id,val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+
+let advancedMode = true;
+function toggleAdvanced() {
+  advancedMode = !advancedMode;
+  applyAdvancedMode();
+}
+function applyAdvancedMode() {
+  document.getElementById('posCard').classList.toggle('simple-mode', !advancedMode);
+  const btn = document.getElementById('toggleAdv');
+  btn.classList.toggle('active', advancedMode);
+  const lbl = document.getElementById('preis-label');
+  if (lbl) lbl.textContent = advancedMode ? 'exkl. MwSt' : '';
+}
+
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function initUI() {
+  document.getElementById('customerAddr').value  = state.customerAddr||'';
+  document.getElementById('eventName').value     = state.eventName||'';
+  document.getElementById('eventDate').value     = state.eventDate||'';
+  document.getElementById('firma').value         = state.firma||'';
+  document.getElementById('personCount').value   = state.persons||0;
+  document.getElementById('eventDuration').value = state.eventDuration||2;
+  document.getElementById('drinkLevel').value    = state.drinkLevel||'viel';
+  applyAdvancedMode();
+  renderRows();
+}
+
+// ── PDF Export ─────────────────────────────────────────────────────────────
+function exportPDF() {
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const L=20, R=190;
+  const DARK=[26,26,26], GRAY=[140,140,140];
+
+  if (state.firma) {
+    doc.setFont('times','bold');
+    doc.setFontSize(24);
+    doc.setTextColor(...DARK);
+    doc.text(state.firma, R, 18, { align:'right' });
+  }
+
+  const addrLines = (state.customerAddr||'').split(',').map(s=>s.trim()).filter(Boolean);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...DARK);
+  let ay=15;
+  addrLines.slice(0,4).forEach(line => { doc.text(line, L, ay); ay+=4.5; });
+
+  const d=new Date();
+  const ds=`Bern,  ${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+  doc.setFontSize(9.5);
+  doc.setTextColor(...DARK);
+  doc.text(ds, R, 36, { align:'right' });
+
+  const parts=[];
+  if (state.eventName) parts.push(state.eventName);
+  if (state.eventDate) parts.push(state.eventDate);
+  const title = parts.length ? `Kostenübersicht,  ${parts.join(', ')}` : 'Kostenübersicht';
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13.5);
+  doc.setTextColor(...DARK);
+  doc.text(title, L, 47);
+
+  let totB=0,totM=0,totT=0;
+  const by={'8.1':0,'2.6':0,'0':0};
+  const mv={'8.1':0,'2.6':0,'0':0};
+
+  const body = state.rows
+    .filter(r => !r.section)
+    .map(r => {
+      const b=r.menge*r.preis;
+      const rate=parseFloat(r.rate);
+      const m=b*rate/100;
+      totB+=b; totM+=m; totT+=b+m;
+      const k=mwstBucket(rate);
+      by[k]+=b; mv[k]+=m;
+      const mg=Number.isInteger(r.menge)?String(r.menge):fmt(r.menge);
+      return [mg, r.produkt, fmt(r.preis), fmt(b), fmt(m), fmt(b+m)];
+    });
+
+  doc.autoTable({
+    startY: 52,
+    head: [[
+      'Menge','Produkt',
+      {content:'Preis pro\nEinheit exkl.\nMwSt',  styles:{halign:'right'}},
+      {content:'Betrag\nin CHF\nexkl. MwSt',       styles:{halign:'right'}},
+      {content:'MwSt',                              styles:{halign:'right'}},
+      {content:'Total',                             styles:{halign:'right'}},
+    ]],
+    body,
+    foot:[[
+      {content:'Total Rechnung',colSpan:3,styles:{halign:'left',fontStyle:'bold',fontSize:10}},
+      {content:fmt(totB),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
+      {content:fmt(totM),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
+      {content:fmt(totT),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
+    ]],
+    margin:{left:L,right:210-R},
+    styles:{font:'helvetica',fontSize:9.5,cellPadding:{top:2,bottom:2,left:2,right:2},textColor:DARK},
+    headStyles:{fillColor:false,textColor:GRAY,fontStyle:'bold',fontSize:8,lineWidth:{bottom:0.25},lineColor:[200,200,200]},
+    footStyles:{fillColor:false,lineWidth:{top:0.5},lineColor:DARK},
+    columnStyles:{
+      0:{halign:'left', cellWidth:13},
+      1:{halign:'left', cellWidth:'auto'},
+      2:{halign:'right',cellWidth:25},
+      3:{halign:'right',cellWidth:25},
+      4:{halign:'right',cellWidth:20},
+      5:{halign:'right',cellWidth:24},
+    },
+    alternateRowStyles:{fillColor:false},
+    tableLineWidth:0,
+    bodyStyles:{lineColor:[235,235,235],lineWidth:{bottom:0.1}},
+  });
+
+  let y = doc.lastAutoTable.finalY+7;
+
+  doc.autoTable({
+    startY: y,
+    head:[[
+      {content:'MwSt in %',styles:{halign:'left'}},
+      {content:'MwSt-pflichtiger Betrag\nin CHF',styles:{halign:'right'}},
+      {content:'MwSt Betrag\nin CHF',styles:{halign:'right'}},
+      {content:'Totalbetrag\nin CHF',styles:{halign:'right'}},
+    ]],
+    body:[
+      ['8.1',fmt(by['8.1']),fmt(mv['8.1']),fmt(by['8.1']+mv['8.1'])],
+      ['2.6',fmt(by['2.6']),fmt(mv['2.6']),fmt(by['2.6']+mv['2.6'])],
+      ['0.0',fmt(by['0']),  fmt(mv['0']),  fmt(by['0']  +mv['0'])],
+    ],
+    margin:{left:L,right:210-R},
+    styles:{font:'helvetica',fontSize:8.5,cellPadding:{top:1.8,bottom:1.8,left:2,right:2},textColor:DARK},
+    headStyles:{fillColor:false,textColor:GRAY,fontStyle:'bold',fontSize:7.5,lineWidth:{bottom:0.2},lineColor:[200,200,200]},
+    columnStyles:{0:{halign:'left',cellWidth:20},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
+    alternateRowStyles:{fillColor:false},
+    tableLineWidth:0,
+    bodyStyles:{lineColor:[230,230,230],lineWidth:{bottom:0.15}},
+  });
+
+  y = doc.lastAutoTable.finalY+7;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...DARK);
+  doc.text('Zahlungskondition', L, y);
+  doc.text('20 Tage netto, ohne Abzug', L+40, y);
+
+  const np = (state.customerAddr||'Kostenrechnung').split(',')[0].trim()
+    .replace(/[^a-zA-Z0-9äöüÄÖÜß\s]/g,'').trim().replace(/\s+/g,'_');
+  const dd=new Date();
+  const df=`${String(dd.getDate()).padStart(2,'0')}.${String(dd.getMonth()+1).padStart(2,'0')}.${dd.getFullYear()}`;
+  doc.save(`Kostenübersicht_${np}_${df}.pdf`);
+}
+
+initUI();
+</script>
+</body>
+</html>
