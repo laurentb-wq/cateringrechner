@@ -751,6 +751,9 @@ const { jsPDF } = window.jspdf;
 function fmt(n) {
   return n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function fmt05(n) {
+  return fmt(Math.round(n * 20) / 20);
+}
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 function mwstBucket(rate) {
   if (Math.abs(rate - 8.1) < 0.01) return '8.1';
@@ -1024,8 +1027,8 @@ function recalc() {
   });
   const catMax = Math.max(...Object.values(cats), 0.01);
   Object.keys(cats).forEach(k => {
-    set(`cat-${k}`, 'CHF ' + fmt(cats[k]));
-    set(`pp-${k}`, p > 0 ? fmt(cats[k] / p) + ' / Pers.' : '–');
+    set(`cat-${k}`, 'CHF ' + fmt05(cats[k]));
+    set(`pp-${k}`, p > 0 ? fmt05(cats[k] / p) + ' / Pers.' : '–');
     const bar = document.getElementById(`bar-${k}`);
     if (bar) bar.style.width = (cats[k] / catMax * 100).toFixed(1) + '%';
   });
