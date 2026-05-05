@@ -164,7 +164,69 @@
     @media (max-width: 800px) {
       .table-wrap { margin: 0 -16px; padding: 0 16px; }
     }
+    /* price hint shown only in mobile simple mode */
+    .row-ph { display: none; }
+
     @media (max-width: 600px) {
+      /* ── simple mode: flex-row list ── */
+      .simple-mode .pos-table,
+      .simple-mode .pos-table tbody,
+      .simple-mode .pos-table tfoot { display: block; }
+
+      .simple-mode .pos-table thead { display: none; }
+
+      .simple-mode .pos-table tbody tr:not(.section-row) {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 0;
+        border-bottom: 1px solid #f2f2ef;
+      }
+      .simple-mode .pos-table tbody tr:not(.section-row) td {
+        display: block;
+        padding: 0;
+        border: none;
+      }
+      .simple-mode .col-menge  { flex-shrink: 0; width: 50px; }
+      .simple-mode .col-prod   { flex: 1; min-width: 0; }
+      .simple-mode .col-preis,
+      .simple-mode .col-betrag,
+      .simple-mode .col-rate,
+      .simple-mode .col-mwst   { display: none !important; }
+      .simple-mode .col-total  {
+        flex-shrink: 0; width: 74px;
+        text-align: right; font-size: 13px; font-weight: 600;
+        color: var(--text); padding-right: 2px;
+      }
+      .simple-mode .col-del { flex-shrink: 0; width: 28px; }
+
+      /* price hint under product name */
+      .simple-mode .row-ph {
+        display: block;
+        font-size: 10px;
+        color: var(--text-3);
+        padding-left: 8px;
+        margin-top: 1px;
+      }
+
+      /* footer total row */
+      .simple-mode .pos-table tfoot tr {
+        display: flex;
+        align-items: center;
+        border-top: 2px solid var(--text);
+        padding: 10px 0 2px;
+      }
+      .simple-mode .pos-table tfoot td {
+        display: block;
+        padding: 0;
+        border: none;
+      }
+      .simple-mode .row-total td:first-child { flex: 1; font-size: 13px; }
+      .simple-mode #f-total { width: 74px; flex-shrink: 0; text-align: right; padding-right: 2px; }
+      .simple-mode .row-total .col-advanced,
+      .simple-mode .row-total .col-del { display: none !important; }
+
+      /* advanced mode: normal table + scroll */
       .pos-table td input[type="number"],
       .pos-table td input[type="text"] { font-size: 12px; padding: 5px 5px; }
       .pos-table td.num { font-size: 12px; padding-right: 5px; }
@@ -882,6 +944,7 @@ function renderRows() {
       <td class="col-prod">
         <input type="text" value="${esc(row.produkt)}" placeholder="Produkt"
           onchange="updateRow('${row.id}','produkt',this.value)">
+        <span class="row-ph" id="r-${row.id}-ph">CHF ${row.preis.toFixed(2)} / Einheit</span>
       </td>
       <td class="col-preis">
         <input type="number" value="${row.preis.toFixed(2)}" min="0" step="0.50"
@@ -927,6 +990,7 @@ function recalc() {
     set(`r-${r.id}-b`, fmt(b));
     set(`r-${r.id}-m`, fmt(m));
     set(`r-${r.id}-t`, fmt(b+m));
+    set(`r-${r.id}-ph`, `CHF ${r.preis.toFixed(2)} / Einheit`);
   });
 
   set('f-betrag', fmt(totB));
