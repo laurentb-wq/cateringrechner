@@ -189,10 +189,10 @@
       }
       .simple-mode .col-menge  { flex-shrink: 0; width: 50px; }
       .simple-mode .col-prod   { flex: 1; min-width: 0; }
-      .simple-mode .col-preis,
       .simple-mode .col-betrag,
       .simple-mode .col-rate,
       .simple-mode .col-mwst   { display: none !important; }
+      .simple-mode .col-preis  { flex-shrink: 0; width: 62px; }
       .simple-mode .col-total  {
         flex-shrink: 0; width: 74px;
         text-align: right; font-size: 13px; font-weight: 600;
@@ -200,24 +200,7 @@
       }
       .simple-mode .col-del { flex-shrink: 0; width: 28px; }
 
-      /* editable price input under product name */
-      .simple-mode .mph {
-        display: block;
-        font-size: 11px;
-        color: var(--text-3);
-        font-family: inherit;
-        background: transparent;
-        border: none;
-        border-bottom: 1px solid transparent;
-        padding: 2px 8px 0;
-        width: 100%;
-        text-align: left;
-      }
-      .simple-mode .mph:focus {
-        outline: none;
-        border-bottom-color: var(--border);
-        color: var(--text);
-      }
+      .simple-mode .mph { display: none !important; }
 
       /* footer total row */
       .simple-mode .pos-table tfoot tr {
