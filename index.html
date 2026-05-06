@@ -9,6 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <style>
     :root {
       --bg:      #f2f2ef;
@@ -583,6 +584,36 @@
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-actions .btn { flex: 1; }
 
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 80px; left: 50%; transform: translateX(-50%) translateY(8px);
+      background: #1a1a1a; color: #fff;
+      font-size: 13px; font-weight: 500;
+      padding: 10px 18px;
+      border-radius: 99px;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 500;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Shared-view banner ── */
+    .shared-banner {
+      background: #EEF3FA;
+      border: 1px solid #c5d5ea;
+      border-radius: var(--r-sm);
+      padding: 10px 16px;
+      font-size: 13px;
+      color: #2d4f7c;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .shared-banner.visible { display: flex; align-items: center; gap: 10px; }
+    .shared-banner strong { font-weight: 600; }
+
     .mobile-sticky-bar {
       display: none;
       position: fixed;
@@ -623,6 +654,11 @@
       <div class="header-total-val" id="header-total-val">—</div>
     </div>
   </header>
+
+  <div class="shared-banner" id="shared-banner">
+    <span>👁</span>
+    <span><strong>Geteilte Ansicht</strong> — du siehst eine freigegebene Kalkulation. Änderungen werden nur lokal gespeichert.</span>
+  </div>
 
   <!-- Veranstaltung -->
   <div class="card">
@@ -809,10 +845,13 @@
 
   <div class="actions">
     <button class="btn btn-ghost" onclick="resetAll()">Zurücksetzen</button>
+    <button class="btn btn-ghost" onclick="shareLink()">↗ Teilen</button>
     <button class="btn btn-primary" onclick="exportPDF()">↓ PDF exportieren</button>
   </div>
 
 </div>
+
+<div class="toast" id="toast"></div>
 
 <div class="modal-overlay" id="parse-modal">
   <div class="modal-box">
@@ -985,6 +1024,29 @@ function showParseModal(data, filename) {
   document.getElementById('parse-modal').classList.add('open');
 }
 
+// ── Share link ───────────────────────────────────────────────────────────────
+function shareLink() {
+  try {
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(state));
+    const url = location.href.split('#')[0] + '#s=' + compressed;
+    navigator.clipboard.writeText(url).then(() => showToast('Link kopiert! 🔗'))
+      .catch(() => {
+        prompt('Link zum Teilen:', url);
+      });
+  } catch(e) {
+    alert('Fehler beim Erstellen des Links.');
+  }
+}
+
+let _toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
 function closeParseModal() {
   document.getElementById('parse-modal').classList.remove('open');
   _parsedQuote = null;
@@ -1081,6 +1143,23 @@ function calcDrink(p, ratio, rmin, level) {
 let state = load();
 
 function load() {
+  // Check for shared link in URL hash
+  try {
+    const hash = location.hash;
+    const m = hash.match(/[#&]s=([^&]+)/);
+    if (m) {
+      const decoded = LZString.decompressFromEncodedURIComponent(m[1]);
+      if (decoded) {
+        const parsed = JSON.parse(decoded);
+        // Show shared banner after DOM ready
+        setTimeout(() => {
+          const banner = document.getElementById('shared-banner');
+          if (banner) banner.classList.add('visible');
+        }, 0);
+        return parsed;
+      }
+    }
+  } catch(e) {}
   try {
     const raw = localStorage.getItem('cr_v6');
     if (raw) return JSON.parse(raw);
