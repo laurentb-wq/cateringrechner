@@ -522,19 +522,35 @@
       .cat-grid { grid-template-columns: repeat(2, 1fr); }
 
       .actions {
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-        background: rgba(255,255,255,0.93);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-top: 1px solid var(--border);
+        margin-top: 8px;
         justify-content: stretch;
         gap: 8px;
-        z-index: 100;
       }
       .btn { flex: 1; padding: 13px; text-align: center; }
+
+      .mobile-sticky-bar {
+        display: flex !important;
+      }
     }
+
+    .mobile-sticky-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      z-index: 100;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .mob-bar-item { display: flex; flex-direction: column; gap: 1px; }
+    .mob-bar-label { font-size: 11px; color: var(--text-2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+    .mob-bar-val { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+    .mob-bar-item:last-child { text-align: right; }
 
     @media (max-width: 480px) {
       .form-grid { grid-template-columns: 1fr; }
@@ -737,6 +753,17 @@
     <button class="btn btn-primary" onclick="exportPDF()">↓ PDF exportieren</button>
   </div>
 
+</div>
+
+<div class="mobile-sticky-bar" id="mobile-sticky-bar">
+  <div class="mob-bar-item">
+    <div class="mob-bar-label">Total inkl. MwSt</div>
+    <div class="mob-bar-val" id="mob-total">—</div>
+  </div>
+  <div class="mob-bar-item">
+    <div class="mob-bar-label">Pro Person</div>
+    <div class="mob-bar-val" id="mob-pp">–</div>
+  </div>
 </div>
 <script>
 const { jsPDF } = window.jspdf;
@@ -1004,6 +1031,8 @@ function recalc() {
   set('s-inkl', 'CHF '+fmt05(totT));
 
   set('header-total-val', totT > 0 ? 'CHF '+fmt05(totT) : '—');
+  set('mob-total', totT > 0 ? 'CHF '+fmt05(totT) : '—');
+  set('mob-pp', p>0 && totT>0 ? 'CHF '+fmt05(totT/p) : '–');
 
   document.getElementById('row-26').style.display = mv['2.6']>0 ? '' : 'none';
   document.getElementById('row-0').style.display  = mv['0']>0   ? '' : 'none';
