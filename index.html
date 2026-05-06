@@ -1025,16 +1025,30 @@ function showParseModal(data, filename) {
 }
 
 // ── Share link ───────────────────────────────────────────────────────────────
-function shareLink() {
+async function shareLink() {
+  const btn = document.querySelector('.btn[onclick="shareLink()"]');
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  btn.disabled = true;
   try {
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(state));
-    const url = location.href.split('#')[0] + '#s=' + compressed;
-    navigator.clipboard.writeText(url).then(() => showToast('Link kopiert! 🔗'))
-      .catch(() => {
-        prompt('Link zum Teilen:', url);
-      });
+    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(state),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const location = res.headers.get('Location') || '';
+    const id = location.split('/').pop();
+    if (!id) throw new Error('Keine ID erhalten');
+    const url = window.location.href.split('#')[0] + '#b=' + id;
+    await navigator.clipboard.writeText(url).catch(() => prompt('Link zum Teilen:', url));
+    showToast('Link kopiert! 🔗');
   } catch(e) {
-    alert('Fehler beim Erstellen des Links.');
+    console.error(e);
+    showToast('Fehler – Link konnte nicht erstellt werden');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
   }
 }
 
@@ -1142,24 +1156,50 @@ function calcDrink(p, ratio, rmin, level) {
 // ── State ──────────────────────────────────────────────────────────────────
 let state = load();
 
-function load() {
-  // Check for shared link in URL hash
-  try {
-    const hash = location.hash;
-    const m = hash.match(/[#&]s=([^&]+)/);
-    if (m) {
-      const decoded = LZString.decompressFromEncodedURIComponent(m[1]);
-      if (decoded) {
-        const parsed = JSON.parse(decoded);
-        // Show shared banner after DOM ready
-        setTimeout(() => {
-          const banner = document.getElementById('shared-banner');
-          if (banner) banner.classList.add('visible');
-        }, 0);
-        return parsed;
+function showSharedBanner() {
+  const banner = document.getElementById('shared-banner');
+  if (banner) banner.classList.add('visible');
+}
+
+async function initFromHash() {
+  const hash = location.hash;
+
+  // New short link: #b=<jsonblob-id>
+  const bm = hash.match(/[#&]b=(\d+)/);
+  if (bm) {
+    try {
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + bm[1], {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const loaded = await res.json();
+        state = loaded;
+        initUI();
+        showSharedBanner();
+      } else {
+        showToast('Geteilter Link konnte nicht geladen werden');
       }
+    } catch(e) {
+      showToast('Fehler beim Laden des geteilten Links');
     }
-  } catch(e) {}
+    return;
+  }
+
+  // Legacy long link: #s=<lzstring>
+  const sm = hash.match(/[#&]s=([^&]+)/);
+  if (sm) {
+    try {
+      const decoded = LZString.decompressFromEncodedURIComponent(sm[1]);
+      if (decoded) {
+        state = JSON.parse(decoded);
+        initUI();
+        showSharedBanner();
+      }
+    } catch(e) {}
+  }
+}
+
+function load() {
   try {
     const raw = localStorage.getItem('cr_v6');
     if (raw) return JSON.parse(raw);
@@ -1551,6 +1591,7 @@ function exportPDF() {
 }
 
 initUI();
+initFromHash();
 </script>
 </body>
 </html>
