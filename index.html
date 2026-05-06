@@ -1025,30 +1025,63 @@ function showParseModal(data, filename) {
 }
 
 // ── Share link ───────────────────────────────────────────────────────────────
-async function shareLink() {
-  const btn = document.querySelector('.btn[onclick="shareLink()"]');
-  const orig = btn.textContent;
-  btn.textContent = '…';
-  btn.disabled = true;
+function encodeForShare(s) {
+  const R = {'0':0,'2.6':1,'8.1':2};
+  const C = {essen:'e',getraenke:'g',geschirr:'s',personal:'p',anreise:'a',sonstiges:'o'};
+  const L = {keine:'k',wenig:'w',normal:'n',viel:'v'};
+  return {
+    v:2, p:s.persons||0, d:s.eventDuration||2, l:L[s.drinkLevel]||'v',
+    ca:s.customerAddr||'', en:s.eventName||'', ed:s.eventDate||'', fi:s.firma||'',
+    am:s.advancedMode?1:0,
+    r:s.rows.map(r => {
+      if (r.section !== undefined) return {s:r.section};
+      let f=0;
+      if(r.pp)        f|=1;
+      if(r.ratio)     f|=2;
+      if(r.staffHours)f|=4;
+      if(r.staffMit)  f|=8;
+      if(r.staffCdS)  f|=16;
+      const row = {n:r.produkt||'', m:r.menge||0, p:r.preis||0, r:R[r.rate]??2};
+      if(f)    row.f=f;
+      if(r.ratio) row.ri=r.ratio;
+      if(r.rmin)  row.rm=r.rmin;
+      if(r.cat)   row.c=C[r.cat]||r.cat[0];
+      return row;
+    })
+  };
+}
+
+function decodeFromShare(compact) {
+  const R={0:'0',1:'2.6',2:'8.1'};
+  const C={e:'essen',g:'getraenke',s:'geschirr',p:'personal',a:'anreise',o:'sonstiges'};
+  const L={k:'keine',w:'wenig',n:'normal',v:'viel'};
+  return {
+    customerAddr:compact.ca||'', eventName:compact.en||'',
+    eventDate:compact.ed||'', firma:compact.fi||'',
+    persons:compact.p||0, eventDuration:compact.d||2,
+    drinkLevel:L[compact.l]||'viel', advancedMode:!!compact.am,
+    rows:compact.r.map(r => {
+      if(r.s!==undefined) return {id:uid(), section:r.s};
+      return {
+        id:uid(), produkt:r.n||'', menge:r.m||0, preis:r.p||0,
+        rate:R[r.r]||'8.1',
+        pp:!!(r.f&1), ratio:(r.f&2)?r.ri:undefined, rmin:r.rm,
+        staffHours:!!(r.f&4), staffMit:!!(r.f&8), staffCdS:!!(r.f&16),
+        cat:r.c?(C[r.c]||r.c):undefined,
+      };
+    })
+  };
+}
+
+function shareLink() {
   try {
-    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(state),
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const location = res.headers.get('Location') || '';
-    const id = location.split('/').pop();
-    if (!id) throw new Error('Keine ID erhalten');
-    const url = window.location.href.split('#')[0] + '#b=' + id;
-    await navigator.clipboard.writeText(url).catch(() => prompt('Link zum Teilen:', url));
-    showToast('Link kopiert! 🔗');
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(encodeForShare(state)));
+    const url = window.location.href.split('#')[0] + '#s=' + compressed;
+    navigator.clipboard.writeText(url)
+      .then(() => showToast('Link kopiert! 🔗'))
+      .catch(() => prompt('Link zum Teilen:', url));
   } catch(e) {
-    console.error(e);
-    showToast('Fehler – Link konnte nicht erstellt werden');
-  } finally {
-    btn.textContent = orig;
-    btn.disabled = false;
+    showToast('Fehler beim Erstellen des Links');
   }
 }
 
@@ -1161,37 +1194,17 @@ function showSharedBanner() {
   if (banner) banner.classList.add('visible');
 }
 
-async function initFromHash() {
+function initFromHash() {
   const hash = location.hash;
 
-  // New short link: #b=<jsonblob-id>
-  const bm = hash.match(/[#&]b=(\d+)/);
-  if (bm) {
-    try {
-      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + bm[1], {
-        headers: { 'Accept': 'application/json' },
-      });
-      if (res.ok) {
-        const loaded = await res.json();
-        state = loaded;
-        initUI();
-        showSharedBanner();
-      } else {
-        showToast('Geteilter Link konnte nicht geladen werden');
-      }
-    } catch(e) {
-      showToast('Fehler beim Laden des geteilten Links');
-    }
-    return;
-  }
-
-  // Legacy long link: #s=<lzstring>
+  // #s=<lzstring> (compact v2 or legacy full state)
   const sm = hash.match(/[#&]s=([^&]+)/);
   if (sm) {
     try {
       const decoded = LZString.decompressFromEncodedURIComponent(sm[1]);
       if (decoded) {
-        state = JSON.parse(decoded);
+        const parsed = JSON.parse(decoded);
+        state = parsed.v === 2 ? decodeFromShare(parsed) : parsed;
         initUI();
         showSharedBanner();
       }
