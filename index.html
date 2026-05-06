@@ -1031,8 +1031,6 @@ function recalc() {
   set('s-inkl', 'CHF '+fmt05(totT));
 
   set('header-total-val', totT > 0 ? 'CHF '+fmt05(totT) : '—');
-  set('mob-total', totT > 0 ? 'CHF '+fmt05(totT) : '—');
-  set('mob-pp', p>0 && totT>0 ? 'CHF '+fmt05(totT/p) : '–');
 
   document.getElementById('row-26').style.display = mv['2.6']>0 ? '' : 'none';
   document.getElementById('row-0').style.display  = mv['0']>0   ? '' : 'none';
@@ -1041,6 +1039,8 @@ function recalc() {
   set('s-pers',  p>0 ? p : '–');
   set('s-pp-ex', p>0 ? 'CHF '+fmt05(totB/p) : '–');
   set('s-pp-in', p>0 ? 'CHF '+fmt05(totT/p) : '–');
+  set('mob-total', totT > 0 ? 'CHF '+fmt05(totT) : '—');
+  set('mob-pp', p>0 && totT>0 ? 'CHF '+fmt05(totT/p) : '–');
 
   // Category breakdown (inkl. MwSt)
   const cats = { essen:0, getraenke:0, geschirr:0, personal:0, anreise:0, sonstiges:0 };
