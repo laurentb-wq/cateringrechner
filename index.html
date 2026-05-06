@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
       --bg:      #f2f2ef;
@@ -533,6 +535,54 @@
       }
     }
 
+    /* ── Upload ── */
+    .upload-drop {
+      border: 2px dashed var(--border);
+      border-radius: var(--r-sm);
+      padding: 16px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-top: 14px;
+    }
+    .upload-drop:hover, .upload-drop.drag-over {
+      border-color: #4B72AF;
+      background: #f0f4fa;
+    }
+    .upload-drop-text { font-size: 13px; color: var(--text-2); }
+    .upload-drop-text strong { color: #4B72AF; font-weight: 600; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border-radius: var(--r);
+      padding: 28px;
+      max-width: 500px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+    }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .modal-subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 18px; }
+    .parsed-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .parsed-row:last-child { border-bottom: none; }
+    .parsed-row-label { color: var(--text-2); white-space: nowrap; }
+    .parsed-row-val { font-weight: 600; text-align: right; }
+    .parsed-row-val.price-total { color: #4B72AF; }
+    .modal-note { font-size: 12px; color: var(--text-3); margin-top: 12px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; }
+
     .mobile-sticky-bar {
       display: none;
       position: fixed;
@@ -611,6 +661,15 @@
           <option value="viel" selected>Viel</option>
         </select>
       </div>
+    </div>
+    <div class="upload-drop" id="upload-drop"
+         onclick="document.getElementById('quote-file').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="event.preventDefault();this.classList.remove('drag-over');handleQuoteUpload(event.dataTransfer.files[0])">
+      <input type="file" id="quote-file" accept=".pdf,.docx" style="display:none"
+             onchange="handleQuoteUpload(this.files[0]);this.value=''">
+      <div class="upload-drop-text">↑ <strong>Offerte hochladen</strong> — PDF oder Word-Datei ablegen</div>
     </div>
   </div>
 
@@ -755,6 +814,19 @@
 
 </div>
 
+<div class="modal-overlay" id="parse-modal">
+  <div class="modal-box">
+    <div class="modal-title">Offerte erkannt</div>
+    <div class="modal-subtitle" id="modal-filename"></div>
+    <div id="parsed-fields"></div>
+    <p class="modal-note" id="modal-note"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeParseModal()">Abbrechen</button>
+      <button class="btn btn-primary" id="modal-apply-btn" onclick="applyParsed()">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
 <div class="mobile-sticky-bar" id="mobile-sticky-bar">
   <div class="mob-bar-item">
     <div class="mob-bar-label">Total inkl. MwSt</div>
@@ -767,6 +839,179 @@
 </div>
 <script>
 const { jsPDF } = window.jspdf;
+
+// ── PDF.js worker ────────────────────────────────────────────────────────────
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── Quote upload & parsing ───────────────────────────────────────────────────
+let _parsedQuote = null;
+
+async function handleQuoteUpload(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const drop = document.getElementById('upload-drop');
+  drop.textContent = 'Wird gelesen…';
+
+  try {
+    let text = '';
+    if (ext === 'pdf') {
+      text = await extractPdfText(file);
+    } else if (ext === 'docx') {
+      text = await extractDocxText(file);
+    } else {
+      drop.innerHTML = '↑ <strong>Offerte hochladen</strong> — PDF oder Word-Datei ablegen';
+      return alert('Bitte eine PDF- oder Word-Datei hochladen.');
+    }
+    _parsedQuote = parseQuoteText(text);
+    showParseModal(_parsedQuote, file.name);
+  } catch(e) {
+    console.error(e);
+    alert('Fehler beim Lesen der Datei: ' + e.message);
+  }
+  drop.innerHTML = '<div class="upload-drop-text">↑ <strong>Offerte hochladen</strong> — PDF oder Word-Datei ablegen</div>';
+}
+
+async function extractPdfText(file) {
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  let text = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+async function extractDocxText(file) {
+  const ab = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(ab);
+  const xmlFile = zip.file('word/document.xml');
+  if (!xmlFile) throw new Error('Kein Word-Dokument');
+  const xml = await xmlFile.async('string');
+  return xml
+    .replace(/<\/w:p>/g, '\n')
+    .replace(/<w:tab\/>/g, '\t')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function parseQuoteText(text) {
+  const r = {};
+
+  // Title: first non-empty line
+  const firstLine = text.split('\n').map(l => l.trim()).find(l => l.length > 3 && l.length < 80);
+  if (firstLine) r.title = firstLine;
+
+  // Persons: "Anzahl Personen  80" or "80 Personen" etc.
+  let m;
+  m = text.match(/Anzahl\s+(?:Pers[äo]nen|G[äa]ste)[^\d]*(\d+)/i)
+    || text.match(/(\d+)\s+(?:Personen|G[äa]ste)/i);
+  if (m) r.persons = parseInt(m[1]);
+
+  // Date
+  m = text.match(/Datum\s*[:\t ]+([^\n\t]{5,40})/i);
+  if (m) r.date = m[1].trim().replace(/\s+/g, ' ');
+
+  // Location
+  m = text.match(/Ort\s*[:\t ]+([^\n\t]{2,60})/i);
+  if (m) r.ort = m[1].trim();
+
+  // Duration in hours
+  m = text.match(/Dauer[^:\n\t]*[:\t ]+(\d+(?:[.,]\d+)?)\s*(?:Stunden?|h\b)/i)
+    || text.match(/(\d+(?:[.,]\d+)?)\s*Stunden?\s+Anlass/i);
+  if (m) r.duration = parseFloat(m[1].replace(',', '.'));
+
+  // Variants with prices: "Menu A   CHF 75 pro Person"
+  const varRe = /([A-ZÄÖÜ][^\n\t]{1,50?}?)\s+CHF\s+([\d'.]+)\s+pro\s+Person/gi;
+  const variants = [];
+  let vm;
+  while ((vm = varRe.exec(text)) !== null) {
+    const price = parseFloat(vm[2].replace(/'/g, ''));
+    if (price > 0) variants.push({ name: vm[1].trim(), price });
+  }
+  if (variants.length) r.variants = variants;
+
+  // Fallback: standalone prices per person
+  if (!variants.length) {
+    const priceRe = /CHF\s+([\d'.]+)\s+pro\s+Person/gi;
+    const prices = [];
+    let pm;
+    while ((pm = priceRe.exec(text)) !== null) {
+      prices.push(parseFloat(pm[1].replace(/'/g, '')));
+    }
+    if (prices.length) r.prices = [...new Set(prices)];
+  }
+
+  return r;
+}
+
+function showParseModal(data, filename) {
+  const rows = [];
+
+  if (data.title) rows.push({ label: 'Offerte', val: data.title });
+  if (data.date)  rows.push({ label: 'Datum',   val: data.date });
+  if (data.ort)   rows.push({ label: 'Ort',     val: data.ort });
+  if (data.persons)  rows.push({ label: 'Personen', val: String(data.persons) });
+  if (data.duration) rows.push({ label: 'Dauer',    val: data.duration + ' Stunden' });
+
+  const priceSrc = data.variants || (data.prices || []).map((p, i) => ({ name: `Preis ${i+1}`, price: p }));
+  for (const v of priceSrc) {
+    const pp = `CHF ${fmt(v.price)} / Person`;
+    const total = data.persons ? ` → CHF ${fmt05(data.persons * v.price)} total` : '';
+    rows.push({ label: v.name, val: pp + total, highlight: true });
+  }
+
+  document.getElementById('parsed-fields').innerHTML = rows.map(r =>
+    `<div class="parsed-row">
+      <span class="parsed-row-label">${r.label}</span>
+      <span class="parsed-row-val${r.highlight ? ' price-total' : ''}">${r.val}</span>
+    </div>`
+  ).join('');
+
+  const applies = [];
+  if (data.persons)  applies.push('Personenanzahl');
+  if (data.duration) applies.push('Dauer');
+  document.getElementById('modal-note').textContent =
+    applies.length ? 'Übernommen wird: ' + applies.join(', ') + '. Preise/Datum sind nur zur Ansicht.' : '';
+  document.getElementById('modal-filename').textContent = filename;
+  document.getElementById('modal-apply-btn').disabled = !applies.length;
+  document.getElementById('parse-modal').classList.add('open');
+}
+
+function closeParseModal() {
+  document.getElementById('parse-modal').classList.remove('open');
+  _parsedQuote = null;
+}
+
+function applyParsed() {
+  if (!_parsedQuote) return;
+  const data = _parsedQuote;
+
+  if (data.persons) {
+    state.persons = data.persons;
+    document.getElementById('personCount').value = data.persons;
+    onPersonsChange();
+  }
+  if (data.duration) {
+    state.eventDuration = data.duration;
+    document.getElementById('eventDuration').value = data.duration;
+    onDurationChange();
+  }
+  if (data.date && !state.eventDate) {
+    state.eventDate = data.date;
+    document.getElementById('eventDate').value = data.date;
+  }
+
+  persist();
+  closeParseModal();
+}
 
 function fmt(n) {
   return n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
