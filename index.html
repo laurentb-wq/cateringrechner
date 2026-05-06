@@ -1565,21 +1565,13 @@ function exportPDF() {
   doc.setFont(MN,'normal'); doc.setFontSize(9); doc.setTextColor(...GRAY);
   doc.text(`Bern, ${todayStr}`, L, Math.max(ay + 2, 36));
 
-  // Title
-  const titleParts = [];
-  if (state.eventName) titleParts.push(state.eventName);
-  if (state.eventDate) titleParts.push(state.eventDate);
-  const titleSuffix = titleParts.length ? `,  ${titleParts.join(', ')}` : `,  ${todayStr}`;
-  doc.setFont(MN,'normal'); doc.setFontSize(14); doc.setTextColor(...BLUE);
-  doc.text('Kostenrechner Catering' + titleSuffix, L, 47);
-
   // Positions table
   let totB=0,totM=0,totT=0;
   const by={'8.1':0,'2.6':0,'0':0};
   const mv={'8.1':0,'2.6':0,'0':0};
 
   const body = state.rows
-    .filter(r => !r.section)
+    .filter(r => !r.section && r.menge > 0)
     .map(r => {
       const b=r.menge*r.preis, rate=parseFloat(r.rate), m=b*rate/100;
       totB+=b; totM+=m; totT+=b+m;
@@ -1619,12 +1611,23 @@ function exportPDF() {
     bodyStyles:{lineColor:[235,235,235],lineWidth:{bottom:0.1}},
   });
 
-  // Measure table height with a dummy render, then center vertically
+  // Measure table height, center vertically, place title just above
+  const titleParts = [];
+  if (state.eventName) titleParts.push(state.eventName);
+  if (state.eventDate) titleParts.push(state.eventDate);
+  const titleSuffix = titleParts.length ? `,  ${titleParts.join(', ')}` : `,  ${todayStr}`;
+  const titleText = 'Kostenrechner Catering' + titleSuffix;
+  const titleH = 12; // title font + gap above table
+
   const dummy = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   dummy.autoTable(tableOpts(52));
   const tableH = dummy.lastAutoTable.finalY - 52;
-  const pageH = 297, headerEnd = 52, footerStart = 282;
-  const centeredY = Math.max(headerEnd, headerEnd + (footerStart - headerEnd - tableH) / 2);
+  const headerEnd = 36, footerStart = 282;
+  const blockH = titleH + tableH;
+  const centeredY = Math.max(headerEnd + titleH, headerEnd + (footerStart - headerEnd - blockH) / 2 + titleH);
+
+  doc.setFont(MN,'normal'); doc.setFontSize(13); doc.setTextColor(...BLUE);
+  doc.text(titleText, L, centeredY - 5);
 
   doc.autoTable(tableOpts(centeredY));
 
