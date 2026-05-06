@@ -1588,21 +1588,19 @@ function exportPDF() {
       return [mg, r.produkt, fmt(r.preis), fmt(b), fmt(m), fmt(b+m)];
     });
 
-  doc.autoTable({
-    startY: 52,
+  const tableOpts = (startY) => ({
+    startY,
     head: [[
       'Menge','Produkt',
-      {content:'Preis pro\nEinheit exkl.\nMwSt',  styles:{halign:'right'}},
-      {content:'Betrag\nin CHF\nexkl. MwSt',       styles:{halign:'right'}},
-      {content:'MwSt',                              styles:{halign:'right'}},
-      {content:'Total',                             styles:{halign:'right'}},
+      {content:'Preis exkl. MwSt', styles:{halign:'right'}},
+      {content:'Betrag exkl. MwSt', styles:{halign:'right'}},
+      {content:'MwSt',              styles:{halign:'right'}},
+      {content:'Total',             styles:{halign:'right'}},
     ]],
     body,
     foot:[[
-      {content:'Total Rechnung',colSpan:3,styles:{halign:'left',fontStyle:'bold',fontSize:10}},
-      {content:fmt(totB),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
-      {content:fmt(totM),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
-      {content:fmt(totT),styles:{halign:'right',fontStyle:'bold',fontSize:10}},
+      {content:'Total', colSpan:5, styles:{halign:'left', fontStyle:'bold', fontSize:10}},
+      {content:'CHF '+fmt(totT), styles:{halign:'right', fontStyle:'bold', fontSize:10}},
     ]],
     margin:{left:L,right:210-R},
     styles:{font:MN,fontSize:9.5,cellPadding:{top:2,bottom:2,left:2,right:2},textColor:DARK},
@@ -1611,9 +1609,9 @@ function exportPDF() {
     columnStyles:{
       0:{halign:'left', cellWidth:13},
       1:{halign:'left', cellWidth:'auto'},
-      2:{halign:'right',cellWidth:25},
-      3:{halign:'right',cellWidth:25},
-      4:{halign:'right',cellWidth:20},
+      2:{halign:'right',cellWidth:28},
+      3:{halign:'right',cellWidth:28},
+      4:{halign:'right',cellWidth:18},
       5:{halign:'right',cellWidth:24},
     },
     alternateRowStyles:{fillColor:false},
@@ -1621,12 +1619,14 @@ function exportPDF() {
     bodyStyles:{lineColor:[235,235,235],lineWidth:{bottom:0.1}},
   });
 
-  let y = doc.lastAutoTable.finalY + 7;
+  // Measure table height with a dummy render, then center vertically
+  const dummy = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  dummy.autoTable(tableOpts(52));
+  const tableH = dummy.lastAutoTable.finalY - 52;
+  const pageH = 297, headerEnd = 52, footerStart = 282;
+  const centeredY = Math.max(headerEnd, headerEnd + (footerStart - headerEnd - tableH) / 2);
 
-  y = doc.lastAutoTable.finalY + 7;
-  doc.setFont(MN,'normal'); doc.setFontSize(9); doc.setTextColor(...DARK);
-  doc.text('Zahlungskondition', L, y);
-  doc.text('20 Tage netto, ohne Abzug', L+40, y);
+  doc.autoTable(tableOpts(centeredY));
 
   // Filename: Kostenrechner_[firma or nachname]_[event date]
   const namePart = (state.firma || (state.customerAddr||'Kostenrechner').split(',')[0])
